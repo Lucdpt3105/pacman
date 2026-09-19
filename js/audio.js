@@ -74,6 +74,12 @@ class AudioManager {
         }
     }
 
+    pauseAll() {
+        for (let key in this.sounds) {
+            this.sounds[key].pause();
+        }
+    }
+
     toggleMute() {
         this.muted = !this.muted;
         localStorage.setItem('pacman_muted', this.muted);

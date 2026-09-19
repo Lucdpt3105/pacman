@@ -52,6 +52,10 @@ class PacmanGame {
         this.countdownText = "3";
         this.countdownInterval = null;
 
+        // Pause State
+        this.isPaused = false;
+        this.onPauseChange = null;
+
         this.images = {};
     }
 
@@ -63,6 +67,7 @@ class PacmanGame {
 
         this.loadImages(() => {
             this.loadMap();
+            this.resetPositions();
             this.startCountdown();
             this.update();
         });
@@ -92,6 +97,25 @@ class PacmanGame {
                 if (onComplete) onComplete();
             }
         }, 700);
+    }
+
+    togglePause() {
+        if (this.gameOver || this.isCountingDown) return;
+
+        this.isPaused = !this.isPaused;
+        if (this.isPaused) {
+            audioManager.pauseAll();
+        } else {
+            if (this.scaredTimer > 0) {
+                audioManager.loop('waza');
+            } else {
+                audioManager.loop('siren');
+            }
+        }
+
+        if (this.onPauseChange) {
+            this.onPauseChange(this.isPaused);
+        }
     }
 
     loadImages(callback) {
@@ -181,6 +205,12 @@ class PacmanGame {
             return;
         }
 
+        if (this.isPaused) {
+            this.draw();
+            setTimeout(() => this.update(), 50);
+            return;
+        }
+
         if (this.scaredTimer > 0) {
             this.scaredTimer--;
             if (this.scaredTimer === 0) {
@@ -250,6 +280,26 @@ class PacmanGame {
             this.context.restore();
         }
 
+        // Draw Paused Screen Overlay
+        if (this.isPaused) {
+            this.context.save();
+            this.context.fillStyle = "rgba(0, 0, 0, 0.65)";
+            this.context.fillRect(0, this.boardHeight / 2 - 55, this.boardWidth, 105);
+
+            this.context.fillStyle = "#fdff00";
+            this.context.shadowColor = "#ffb800";
+            this.context.shadowBlur = 15;
+            this.context.font = "bold 36px 'Segoe UI', sans-serif";
+            this.context.textAlign = "center";
+            this.context.fillText("PAUSED", this.boardWidth / 2, this.boardHeight / 2 - 5);
+
+            this.context.shadowBlur = 0;
+            this.context.fillStyle = "#ffffff";
+            this.context.font = "14px 'Segoe UI', sans-serif";
+            this.context.fillText("Press P or SPACE to Resume", this.boardWidth / 2, this.boardHeight / 2 + 28);
+            this.context.restore();
+        }
+
         // Draw Game Over Screen
         if (this.gameOver) {
             this.context.save();
@@ -314,7 +364,7 @@ class PacmanGame {
 
         if (this.pacman) {
             // Check nextDirection pre-turning
-            if (this.nextDirection && this.nextDirection !== this.pacman.direction) {
+            if (this.nextDirection && (this.nextDirection !== this.pacman.direction || (this.pacman.velocityX === 0 && this.pacman.velocityY === 0))) {
                 if (this.canMoveInDirection(this.pacman, this.nextDirection)) {
                     if (this.nextDirection === 'U' || this.nextDirection === 'D') {
                         this.pacman.x = Math.round(this.pacman.x / this.tileSize) * this.tileSize;
@@ -361,6 +411,7 @@ class PacmanGame {
                     ghost.reset();
                     ghost.image = ghost.originalImage;
                     ghost.isScared = false;
+                    this.setGhostRandomDirection(ghost);
                 } else {
                     audioManager.stop('siren');
                     audioManager.stop('waza');
@@ -402,8 +453,8 @@ class PacmanGame {
                 if (Block.collision(ghost, wall)) {
                     ghost.x -= ghost.velocityX;
                     ghost.y -= ghost.velocityY;
-                    const newDirection = this.directions[Math.floor(Math.random() * 4)];
-                    ghost.updateDirection(newDirection, this.walls, this.tileSize);
+                    this.setGhostRandomDirection(ghost);
+                    break;
                 }
             }
         }
@@ -488,6 +539,16 @@ class PacmanGame {
             return;
         }
 
+        if (e.code === "KeyP" || e.code === "Space" || e.code === "Escape") {
+            e.preventDefault();
+            this.togglePause();
+            return;
+        }
+
+        if (this.isPaused) {
+            return;
+        }
+
         let direction = null;
         if (e.code === "ArrowUp" || e.code === "KeyW") {
             direction = 'U';
@@ -507,7 +568,22 @@ class PacmanGame {
         }
     }
 
+    setGhostRandomDirection(ghost) {
+        const shuffled = [...this.directions].sort(() => Math.random() - 0.5);
+        for (let dir of shuffled) {
+            if (ghost.updateDirection(dir, this.walls, this.tileSize)) {
+                return;
+            }
+        }
+    }
+
     resetPositions() {
+        if (this.isPaused) {
+            this.isPaused = false;
+            if (this.onPauseChange) {
+                this.onPauseChange(false);
+            }
+        }
         this.pacman.reset();
         this.nextDirection = 'R';
         this.pacman.direction = 'R';
@@ -516,8 +592,7 @@ class PacmanGame {
             ghost.reset();
             ghost.image = ghost.originalImage;
             ghost.isScared = false;
-            const newDirection = this.directions[Math.floor(Math.random() * 4)];
-            ghost.updateDirection(newDirection, this.walls, this.tileSize);
+            this.setGhostRandomDirection(ghost);
         }
     }
 }

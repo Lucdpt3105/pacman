@@ -42,7 +42,13 @@ body {
     font-weight: bold;
 }
 
-#sound-toggle {
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.control-btn {
     background: #1a1a2e;
     border: 2px solid #fdff00;
     border-radius: 8px;
@@ -52,18 +58,28 @@ body {
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease-in-out;
+    width: 44px;
+    height: 44px;
 }
 
-#sound-toggle:hover {
+.control-btn:hover {
     background: #252542;
     transform: scale(1.08);
     box-shadow: 0 0 12px rgba(253, 255, 0, 0.5);
 }
 
+.control-btn:focus {
+    outline: none;
+}
+
 #sound-icon {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     object-fit: contain;
+}
+
+#pause-toggle svg {
+    display: block;
 }
 
 #board {
